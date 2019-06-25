@@ -38,12 +38,12 @@ class VIEW():
         self.type_count = drc.THRESHOLD_VALUE
         # 缺失值的展示标识
         self.miss_name = '缺失值'
+        # 类别型特征的值较多的字段
+        self.special = []
         # 缺失值字段的字典
         self.miss = self.overview()
         # 只有一个值的特征字段
         self.one = self.distribution_feature()
-        # 需要进行特殊处理的特征
-        self.special = self.relation_feature_with_target()
 
     def overview(self):
         """
@@ -88,6 +88,11 @@ class VIEW():
                 if len(set(list(plot_data.values))) != 1:
                     # 缺失值变为自定义的类别
                     plot_data = plot_data.replace(np.nan, self.miss_name).values
+                    # 判断该特征的不同值的个数
+                    length = len(set(plot_data))
+                    if length > self.type_count:
+                        self.special.append(key)
+                        continue
                     # 产生数据
                     label_data, num_data = a_f.generate_bar(plot_data)
                     if key in self.miss:
@@ -164,8 +169,6 @@ class VIEW():
 
                             # 判断该类型中不同值的个数
                             if len(set(ydata.values)) > self.type_count:
-                                print(len(set(ydata.values)), self.type_count)
-                                special_list.append(key)
                                 continue
                             # 生成数据
                             x_data, y_data, data_dict = a_f.generate_bar_type(xdata, ydata)
@@ -209,8 +212,6 @@ class VIEW():
                             y_data = new_df['num'].values
                             # 判断该类型中不同值的个数
                             if len(set(y_data)) > self.type_count:
-                                print(len(set(y_data)),  self.type_count)
-                                special_list.append(key)
                                 continue
                             data_dict = a_f.generate_data_for_plot_distribution(x_data, y_data)
                             # 获取标题
@@ -241,14 +242,18 @@ class VIEW():
                         # 输出数据报告
                         DOC.add_paragraph('关系: ' + key + ' VS ' + self.name, style='List Bullet')
                         DOC.add_picture(r'%s/%s_%s.png' % (self.path, key, self.name), width=Inches(5.8))
-        print('四、每个特征字段与目标字段之间的关系：完毕')
-        return special_list
+        return print('四、每个特征字段与目标字段之间的关系：完毕')
 
     def report_other(self):
         DOC.add_heading('五、其他', level=1)
         DOC.add_paragraph('类别型特征中，不同值较多的字段：')
         for j in self.special:
             DOC.add_paragraph('字段%s，不同值的个数：%d' % (j, len(set(self.data[j].values))), style='List Bullet')
+        if self.one:
+            DOC.add_paragraph('类别型特征中，只有一个值的字段：')
+            for h in self.one:
+                DOC.add_paragraph('字段%s，只有一个值' % h, style='List Bullet')
+
         return print('五、其他：完毕')
 
 
@@ -256,7 +261,7 @@ class VIEW():
 if __name__ == "__main__":
 
     data_report = VIEW()
+    data_report.relation_feature_with_target()
     data_report.report_other()
     DOC.save(r'%s/%s数据报告.docx' % (data_report.path, data_report.report_name))
     print('数据报告生成完毕')
-
