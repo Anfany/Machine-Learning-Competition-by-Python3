@@ -28,10 +28,11 @@ SAVE_PATH = r'E:\tensorflow_Learn\machine_learning_competitions\kaggle\titanic\r
 
 
 # 数据集名称
-DATA_NAME = 'House Prices预测数据集'
+DATA_NAME = '泰坦尼克乘客生还预测数据集'
 
 # 类别型字段中，值的个数超过定值，就不再进行展示
 THRESHOLD_VALUE = 20
+
 
 
 
