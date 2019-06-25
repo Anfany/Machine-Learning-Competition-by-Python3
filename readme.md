@@ -4,7 +4,7 @@
 
 #### 工具篇
 
-1. 自动生成数据报告
+1. [自动生成数据报告](https://github.com/Anfany/Machine-Learning-Competition-by-Python3/blob/master/tool/1.generate_report.md)
 
 
 
