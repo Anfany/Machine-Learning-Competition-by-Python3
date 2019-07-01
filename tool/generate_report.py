@@ -3,7 +3,7 @@
 
 #  生成数据集报告的主程序
 
-from docx import Document  # 写入.word
+from docx import Document  # 写入word
 from docx.shared import Inches  #
 import io
 import pandas as pd
