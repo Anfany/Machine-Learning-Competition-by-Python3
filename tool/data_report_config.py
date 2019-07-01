@@ -1,7 +1,7 @@
 # -*- coding：utf-8 -*-
 # &Author  AnFany
 
-#  更改此程序中的设置，运行generate_report.py生成.word格式的数据报告
+#  更改此程序中的设置，运行generate_report.py生成word格式的数据报告
 
 
 # 数据文件的路径
