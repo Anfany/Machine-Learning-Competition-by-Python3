@@ -3,7 +3,7 @@
 
 #  生成数据集报告的主程序
 
-from docx import Document  # 写入word
+from docx import Document  # 写入.word
 from docx.shared import Inches  #
 import io
 import pandas as pd
@@ -11,7 +11,7 @@ import numpy as np
 import auxiliary_fuction as a_f  # 辅助函数
 import data_report_config as drc  # 数据报告的配置
 import read_data as data  # 数据文件
-
+from mpl_toolkits.mplot3d import Axes3D
 
 # WORD版数据报告
 DOC = Document()
@@ -151,8 +151,6 @@ class VIEW():
         :return: 绘制的图
         """
         DOC.add_heading('四、每个特征字段与目标字段之间的关系', level=1)
-        # 存储值较多的类别型特征的字段名
-        special_list = []  # 这些字段需要特殊处理
         for key in self.data:
             if key != self.name:
                 if key not in self.one:
@@ -244,8 +242,113 @@ class VIEW():
                         DOC.add_picture(r'%s/%s_%s.png' % (self.path, key, self.name), width=Inches(5.8))
         return print('四、每个特征字段与目标字段之间的关系：完毕')
 
+    def relation_multi_feature_with_target(self):
+        """
+        绘制由2个特征的组合构成的特征和目标特征之间的关系图。
+        目标特征是类别特征，
+             如果特征组合中全是类别型特征，则绘制分类饼图，
+             如果只有一个特征是类别型特征，则绘制箱图
+             如果均是连续型特征，则绘制分类散点图，不同类别用颜色区分
+        目标特征是连读特征
+            如果特征组合中全是连续特征，则绘制三维散点图
+            如果只有一个值类别型特征，则绘制分类散点图。
+            如果均是类别型特征，则每个特征值得组合绘制箱图
+        :return: 图
+        """
+        DOC.add_heading('五、两个类别特征与目标特征之间的分布关系', level=1)
+        # 首先获取
+        all_column = self.data.keys()
+        # 去除掉一个的，类别型特征去掉含有多个值的
+        rest_column = [d for d in all_column if d not in self.one and d not in self.special and d != self.name]
+        # 开始绘制图
+        for a in range(len(rest_column) - 1):
+            for b in range(a + 1, len(rest_column)):
+                h, s = rest_column[a], rest_column[b]
+                # 类别型缺失值的数理：缺失值变为一类；  对于连续型的特征，缺失值直接去掉。
+                new_df = pd.DataFrame()
+                new_df['num'] = self.data[self.name]
+                new_df['h'] = self.data[h]
+                new_df['s'] = self.data[s]
+                # 图片标题
+                title = '%s VS  %s 的分布' % (h, s)
+                # 图片名称
+                fig_name = '%s_%s' % (h, s)
+                # 坐标轴标签
+                if h in self.miss:
+                    labelx = '%s,%s' % (h, self.miss[h])
+                else:
+                    labelx = h
+                if s in self.miss:
+                    labely = '%s,%s' % (s, self.miss[s])
+                else:
+                    labely = s
+                # 开始判断
+                if type(self.data[h]) == object or h in self.f_list:  # 类别型
+                    if type(self.data[s]) == object or s in self.f_list:  # 类别型
+                        # 数据值填充
+                        new_df = new_df.fillna(self.miss_name)
+                    else:
+                        new_df = new_df.dropna(subset=["s"])
+                        new_df = new_df.fillna(self.miss_name)
+                else:
+                    if type(self.data[s]) == object or s in self.f_list:  # 类别型
+                        new_df = new_df.dropna(subset=["h"])
+                        new_df = new_df.fillna(self.miss_name)
+                    else:
+                        new_df = new_df.dropna(axis=0, how='any')
+                # 获取数据
+                data1 = new_df['h'].values
+                data2 = new_df['s'].values
+                data3 = new_df['num'].values
+                # 目标特征是类别型特征
+                if self.data[self.name].dtype == object or self.name in self.f_list:
+                    # 如果h，s均是类别型特征
+                    if (self.data[h].dtype == object or h in self.f_list) and (self.data[s].dtype == object or s in self.f_list):
+                        # 绘制各个特征值组合中的类别的饼图
+                        a_f.plot_two_type_type_pie(data1, data2, data3, title, fig_name)
+                    # h不是类别型特征
+                    elif self.data[h].dtype != object and h not in self.f_list:
+                        if self.data[s].dtype == object or s in self.f_list:
+                            # 箱图
+                            a_f.plot_one_type_type_box(data1, data2, data3, title, fig_name, labelx, labely, self.name)
+                        else:
+                            # 特征均是连续的
+                            a_f.plot_scatter_type(data1, data2, data3, title, fig_name, labelx, labely)
+                    # s不是类别型特征
+                    else:
+                        if self.data[h].dtype == object or h in self.f_list:
+                            # 箱图
+                            a_f.plot_one_type_type_box(data2, data1, data3, title, fig_name, labely, labelx, self.name)
+                        else:
+                            # 特征均是连续的
+                            a_f.plot_scatter_type(data1, data2, data3, title, fig_name, labelx, labely)
+                # 目标特征是连续型特征
+                else:
+                    # 如果h，s均是类别型特征
+                    if (self.data[h].dtype == object or h in self.f_list) and (self.data[s].dtype == object or s in self.f_list):
+                        # 特征值组合箱图
+                        a_f.plot_two_type_num_box(data1, data2, data3, title, fig_name)
+                    # h不是类别型特征
+                    elif self.data[h].dtype != object and h not in self.f_list:
+                        if self.data[s].dtype == object or s in self.f_list:
+                            # 散点
+                            a_f.plot_scatter_type(data1, data3, data2, title, fig_name, labelx, self.name)
+                        else:
+                            # 3d散点图
+                            a_f.plot_scatter_3d(data1, data2, data3, title, fig_name, labelx, labely,self.name)
+                    # s不是类别型特征
+                    else:
+                        if self.data[h].dtype == object or h in self.f_list:
+                            # 散点
+                            a_f.plot_scatter_type(data2, data3, data1, title, fig_name, labely, self.name)
+                        else:
+                            # 3d散点图
+                            a_f.plot_scatter_3d(data1, data2, data3, title, fig_name, labelx, labely, self.name)
+
+        return print('五、组合特征与目标特征的分布：完毕')
+
     def report_other(self):
-        DOC.add_heading('五、其他', level=1)
+        DOC.add_heading('六、其他', level=1)
         DOC.add_paragraph('类别型特征中，不同值较多的字段：')
         for j in self.special:
             DOC.add_paragraph('字段%s，不同值的个数：%d' % (j, len(set(self.data[j].values))), style='List Bullet')
@@ -254,7 +357,7 @@ class VIEW():
             for h in self.one:
                 DOC.add_paragraph('字段%s，只有一个值' % h, style='List Bullet')
 
-        return print('五、其他：完毕')
+        return print('六、其他：完毕')
 
 
 # 主函数
@@ -262,6 +365,9 @@ if __name__ == "__main__":
 
     data_report = VIEW()
     data_report.relation_feature_with_target()
+    data_report.relation_multi_feature_with_target()
     data_report.report_other()
     DOC.save(r'%s/%s数据报告.docx' % (data_report.path, data_report.report_name))
     print('数据报告生成完毕')
+
+
