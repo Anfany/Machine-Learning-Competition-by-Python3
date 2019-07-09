@@ -4,6 +4,7 @@
 
 # 数据概览中需要的辅助函数：绘制图的函数，以及产生数据的函数
 import re
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt  # 绘图
 from pylab import mpl  # 中文显示
@@ -220,6 +221,7 @@ def plot_density_with_type(data_dict, title, fig_name, xlabel):
     plt.savefig(r'%s\%s.png' % (drc.SAVE_PATH, fig_name))
     plt.close()
 
+
 # 计算序列间的皮尔逊系数
 def get_pearson(data1, data2):
     """
@@ -256,5 +258,237 @@ def plot_scatter(data1, data2, title, fig_name, labelx, labely):
     plt.ylabel(u'%s' % labely)
     plt.savefig(r'%s\%s.png' % (drc.SAVE_PATH, fig_name))
     plt.close()
+
+
+def plot_two_type_type_pie(data1, data2, data3, title, fig_name):
+    """
+    data1,data2均是类别型特征的值的列表。 data3是类别型特征。绘制组合特征值组合的分类饼图
+    :param data1: 数据列表1
+    :param data2: 数据列表2
+    :param data3: 数据列表3
+    :param title: 图片的标题
+    :param fig_name: 保存的图片名称
+    :return: 饼图
+    """
+    # 2个类别特征的值
+    type_data1 = sorted(list(set(data1)))
+    type_data2 = sorted(list(set(data2)))
+    # 目标特征的值
+    t_type = sorted(list(set(data3)))
+    # 特征值数少的作为行
+    if len(type_data1) > len(type_data2):
+        type_data1, type_data2 = type_data2, type_data1
+        data1, data2 = data2, data1
+    # 设置图
+    fig, axes = plt.subplots(nrows=len(type_data1), ncols=len(type_data2))
+    #  根据饼图中人数的多少。定义饼图的大小。
+    min_num, max_num = 0.9, 1.9
+    size_dict = {}
+    count_dict = {}
+    for a in type_data1:
+        for b in type_data2:
+            pie_data = []
+            for c, d, e in zip(data1, data2, data3):
+                if a == c and b == d:
+                    pie_data.append(e)
+            size_dict['%s_%s' % (str(a), str(b))] = len(pie_data) / len(data3)
+            count_dict['%s_%s' % (str(a), str(b))] = pie_data
+    trans_size_dict = {h: (size_dict[h] - min(size_dict.values()) / (max(size_dict.values()) - min(size_dict.values()))
+                                                                         * (max_num - min_num) + min_num) for h in size_dict}
+    # 定义图的位置
+    sign = 0
+    for a in type_data1:
+        for b in type_data2:
+            # 计算
+            new_dict = {}
+            for k in count_dict['%s_%s' % (str(a), str(b))]:
+                if k in new_dict:
+                    new_dict[k] += 1
+                else:
+                    new_dict[k] = 1
+            # 数值列表
+            data_pie = [new_dict[o] if o in new_dict else 0 for o in t_type]
+            label = ['类%s:\n' % tt + str(dd) if dd != 0 else '' for dd, tt in zip(data_pie, t_type)]
+            axes[sign // len(type_data2), sign % len(type_data2)].pie(data_pie,
+                                                                      labels=label,
+                                                                      radius=trans_size_dict['%s_%s' % (str(a), str(b))],
+                                                                      labeldistance=.2)
+
+            if sign // len(type_data2) == len(type_data1) - 1:
+                axes[sign // len(type_data2), sign % len(type_data2)].set_xlabel(b)
+
+            if sign % len(type_data2) == 0:
+                axes[sign // len(type_data2), sign % len(type_data2)].set_ylabel(a)
+
+            sign += 1
+
+    fig.suptitle(u'%s' % title)
+    plt.savefig(r'%s\%s.png' % (drc.SAVE_PATH, fig_name))
+    plt.close()
+
+
+def plot_one_type_type_box(data1, data2, data3, title, fig_name, labelx, labely, name):
+    """
+    data1是连续特征的值的列表,data2是类别型特征的值的列表。 data3是类别型特征。绘制组合特征值组合的分类箱图
+    :param data1: 数据列表1
+    :param data2: 数据列表2
+    :param data3: 数据列表3
+    :param title: 图片的标题
+    :param fig_name: 保存的图片名称
+    :param labelx: X轴标题
+    :param labely: Y轴标题
+    :param name: 图例的名称
+    :return: 饼图
+    """
+    df = pd.DataFrame()
+    df['number'] = data1
+    df['type'] = data2
+    df['target'] = data3
+    plt.figure(figsize=(13, 10), dpi=80)
+    sns.boxplot(x='type', y='number', data=df, hue='target')
+
+    for i in range(len(df['type'].unique())-1):
+        plt.vlines(i+.5, 10, 45, linestyles='solid', colors='gray', alpha=0.2)
+
+    plt.title(u'%s' % title, fontsize=22)
+    plt.xlabel(u'%s' % labely)
+    plt.ylabel(u'%s' % labelx)
+    plt.legend(title=name)
+    plt.savefig(r'%s\%s.png' % (drc.SAVE_PATH, fig_name))
+    plt.close()
+
+
+def plot_scatter_type(data1, data2, data3, title, fig_name, label1, label2):
+    """
+    绘制data1和data2的散点图，其中data3中的值为图例。如果类别大于10个类别，需要在程序中添加颜色。否则会导致不同类颜色相同
+    :param data1: 数据列表1
+    :param data2: 数据列表2
+    :param data3: 代表图例的数据列表
+    :param title: 图片的标题
+    :param fig_name: 保存的图片名称
+    :param label1: X轴标题
+    :param label2: Y轴标题
+    :return: 散点图
+    """
+    fig, ax = plt.subplots()
+    legend_list = list(set(data3))
+    # 10种颜色的列表
+    c_list = ['k', 'g', 'c', 'b', 'y', 'r', 'm', 'tab:brown', 'tab:blue', 'tab:gray', 'tab:pink']
+
+    for j in range(len(legend_list)):
+        data_1 = [a for a, b in zip(data1, data3) if b == legend_list[j]]
+        data_2 = [c for c, d in zip(data2, data3) if d == legend_list[j]]
+        ax.scatter(data_1, data_2, c=c_list[j % 10], label=legend_list[j % 10], alpha=0.9, edgecolors='none', s=50)
+    ax.legend()
+    plt.title(u'%s' % title)
+    plt.xlabel(u'%s' % label1)
+    plt.ylabel(u'%s' % label2)
+    plt.savefig(r'%s\%s.png' % (drc.SAVE_PATH, fig_name))
+    plt.close()
+
+
+def plot_scatter_3d(data1, data2, data3, title, fig_name, label1, label2, label3):
+    """
+    绘制3d的散点图
+    :param data1: 数据列表1
+    :param data2: 数据列表2
+    :param data3: 数据列表3
+    :param title: 图片的标题
+    :param fig_name: 保存的图片名称
+    :param label1: X轴标题
+    :param label2: Y轴标题
+    :param label3: Z轴标题
+    :return: 散点图
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(data1, data2, data3)
+    ax.set_xlabel(u'%s' % label1)
+    ax.set_ylabel(u'%s' % label2)
+    ax.set_zlabel(u'%s' % label3)
+    plt.title(u'%s' % title)
+    plt.savefig(r'%s\%s.png' % (drc.SAVE_PATH, fig_name))
+    plt.close()
+
+
+def plot_two_type_num_box(data1, data2, data3, title, fig_name):
+    """
+    data1,data2均是类别型特征的值的列表。 data3是连续型特征，特征值的组合采用箱图
+    :param data1: 数据列表1
+    :param data2: 数据列表2
+    :param data3: 数据列表3
+    :param title: 图片的标题
+    :param fig_name: 保存的图片名称
+    :return: 饼图
+    """
+    plt.style.use('ggplot')
+    # 2个类别特征的值
+    type_data1 = sorted(list(set(data1)))
+    type_data2 = sorted(list(set(data2)))
+
+    # 特征值数少的作为行
+    if len(type_data1) > len(type_data2):
+        type_data1, type_data2 = type_data2, type_data1
+        data1, data2 = data2, data1
+    # 设置图
+    fig, axes = plt.subplots(nrows=len(type_data1), ncols=len(type_data2))
+    if len(data1) == 0 or len(data2) == 0 or len(data3) == 0:
+        return print('绘图数据出现空列表')
+    min_num, max_num = min(data3), max(data3)
+    sign = 0
+    for a in type_data1:
+        for b in type_data2:
+            pie_data = []
+            for c, d, e in zip(data1, data2, data3):
+                if a == c and b == d:
+                    pie_data.append(e)
+            if len(type_data1) == 1:
+                if len(type_data2) != 1:
+                    axes[sign % len(type_data2)].boxplot(pie_data, showmeans=True, labels=[''])
+                    # 设置同样的y轴区间
+                    axes[sign % len(type_data2)].set_ylim(min_num, max_num)
+
+                    # 最后一行
+                    axes[sign % len(type_data2)].set_xlabel(b)
+                    # 第一列
+                    if sign % len(type_data2) == 0:
+                        axes[sign % len(type_data2)].set_ylabel(a)
+                    else:
+                        axes[sign % len(type_data2)].set_yticks(())
+                else:
+                    axes.boxplot(pie_data, showmeans=True, labels=[''])
+                    # 设置同样的y轴区间
+                    axes.set_ylim(min_num, max_num)
+                    # 最后一行
+                    axes.set_xlabel(b)
+                    axes.set_ylabel(a)
+            else:
+                axes[sign // len(type_data2), sign % len(type_data2)].boxplot(pie_data, showmeans=True, labels=[''])
+                # 设置同样的y轴区间
+                axes[sign // len(type_data2), sign % len(type_data2)].set_ylim(min_num, max_num)
+
+                # 最后一行
+                if sign // len(type_data2) == len(type_data1) - 1:
+                    axes[sign // len(type_data2), sign % len(type_data2)].set_xlabel(b)
+                # 第一列
+                if sign % len(type_data2) == 0:
+                    axes[sign // len(type_data2), sign % len(type_data2)].set_ylabel(a)
+                    # 只要是第一列的，不是最后一行，只保留y轴
+                    if sign // len(type_data2) != len(type_data1) - 1:
+                        axes[sign // len(type_data2), sign % len(type_data2)].set_xticks(())
+                else:
+                    # 只要不是第一列的，最后一行，只保留x轴
+                    if sign // len(type_data2) == len(type_data1) - 1:
+                        axes[sign // len(type_data2), sign % len(type_data2)].set_yticks(())
+                    else:
+                        axes[sign // len(type_data2), sign % len(type_data2)].set_yticks(())
+                        axes[sign // len(type_data2), sign % len(type_data2)].set_xticks(())
+            sign += 1
+
+    fig.suptitle(u'%s' % title)
+    plt.savefig(r'%s\%s.png' % (drc.SAVE_PATH, fig_name))
+    plt.close()
+
+
 
 
